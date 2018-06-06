@@ -458,7 +458,7 @@ rb_ast_node_last_column(VALUE self)
 }
 
 static VALUE
-rb_ast_node_inspect(VALUE self)
+ast_node_inspect_head(VALUE self)
 {
     VALUE str;
     VALUE cname;
@@ -471,8 +471,56 @@ rb_ast_node_inspect(VALUE self)
     rb_str_append(str, cname);
     rb_str_cat2(str, "(");
     rb_str_catf(str, "%s(%d) %d:%d, %d:%d", node_type_to_str(data->node), nd_type(data->node), nd_first_lineno(data->node), nd_first_column(data->node), nd_last_lineno(data->node), nd_last_column(data->node));
+
+    return str;
+}
+
+static VALUE
+rb_ast_node_inspect(VALUE self)
+{
+    VALUE str;
+    str = ast_node_inspect_head(self);
     rb_str_cat2(str, "): >");
 
+    return str;
+}
+
+
+static VALUE
+ast_node_pretty_prrint_children(VALUE _, VALUE ary)
+{
+    VALUE self, pp;
+    VALUE children;
+    VALUE child;
+    long i;
+
+    self = RARRAY_AREF(ary, 0);
+    pp = RARRAY_AREF(ary, 1);
+    children = rb_ast_node_children(self);
+
+    rb_funcall(pp, rb_intern("breakable"), 0, 0);
+    for (i = 0; i < RARRAY_LEN(children); i++) {
+        if (i != 0) rb_funcall(pp, rb_intern("comma_breakable"), 0);
+        child = RARRAY_AREF(children, i);
+        rb_funcall(pp, rb_intern("pp"), 1, child);
+    }
+    return Qnil;
+}
+
+static VALUE
+rb_ast_node_pretty_print(VALUE self, VALUE pp)
+{
+    VALUE str;
+    VALUE group_argv[1];
+    group_argv[0] = INT2NUM(2);
+
+    str = ast_node_inspect_head(self);
+
+    rb_funcall(pp, rb_intern("text"), 1, str);
+
+    rb_block_call(pp, rb_intern("group"), 1, group_argv, ast_node_pretty_prrint_children, rb_ary_new3(2, self, pp));
+
+    rb_funcall(pp, rb_intern("text"), 1, rb_str_new2("): >"));
     return str;
 }
 
@@ -493,4 +541,5 @@ Init_ast(void)
     rb_define_method(rb_cNode, "last_column", rb_ast_node_last_column, 0);
     rb_define_method(rb_cNode, "children", rb_ast_node_children, 0);
     rb_define_method(rb_cNode, "inspect", rb_ast_node_inspect, 0);
+    rb_define_method(rb_cNode, "pretty_print", rb_ast_node_pretty_print, 1);
 }

@@ -1642,16 +1642,22 @@ name_err_mesg_to_str(VALUE obj)
 
 #define FAKE_CSTR(v, str) rb_setup_fake_str((v), (str), rb_strlen_lit(str), usascii)
 	obj = ptr[NAME_ERR_MESG__RECV];
-	switch (obj) {
-	  case Qnil:
+	switch (TYPE(obj)) {
+	  case T_NIL:
 	    d = FAKE_CSTR(&d_str, "nil");
 	    break;
-	  case Qtrue:
+	  case T_TRUE:
 	    d = FAKE_CSTR(&d_str, "true");
 	    break;
-	  case Qfalse:
+	  case T_FALSE:
 	    d = FAKE_CSTR(&d_str, "false");
 	    break;
+          case T_STRING:
+            if (RSTRING_LEN(obj) > 63) {
+                d = QUOTE(rb_any_to_s(obj));
+                singleton = 1;
+                break;
+            }
 	  default:
 	    d = rb_protect(rb_inspect, obj, &state);
 	    if (state)
